@@ -46,11 +46,13 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:20p
 #lootbox{border:2px solid var(--gold);padding:6px;background:#211a14}
 #lootbox .lbl{color:var(--gold)}
 #party{display:flex;flex-direction:column;gap:4px;font-size:18px}
-.pm{display:grid;grid-template-columns:1fr auto;gap:2px 6px;align-items:center;background:var(--panel2);padding:4px 6px;border:2px solid var(--line)}
-.pm .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.pm{display:grid;grid-template-columns:1fr 1fr;gap:3px 4px;align-items:center;background:var(--panel2);padding:4px 6px;border:2px solid var(--line)}
+.pm .nm{grid-column:1/-1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .pm .mini-hp{grid-column:1/-1;height:6px;background:#0a0810}
 .pm .mini-hp i{display:block;height:100%;background:var(--hp)}
 button.tp{font-family:var(--f-ui);font-size:16px;background:#2a3f6b;color:var(--ink);border:2px solid #3d5a96;cursor:pointer;padding:0 6px}
+button.tp.tr{background:#5a3f1a;border-color:#a0702e}
+button.tp.tr:hover:not(:disabled){background:#7a5a2a}
 button.tp:disabled{opacity:.4;cursor:default}
 #wrath{font-size:17px;color:var(--dim)} #wrath b{color:var(--danger);font-weight:normal}
 #net{position:absolute;top:calc(8px + env(safe-area-inset-top,0px));left:max(10px, env(safe-area-inset-left,0px));font-size:18px;background:#000a;padding:2px 8px;border:2px solid var(--line);z-index:4}
@@ -99,8 +101,13 @@ input.nick:focus{border-color:var(--gold);outline:none}
 #trade .col{display:flex;flex-direction:column;gap:6px;min-width:0}
 #trade .col .lbl{margin:0}
 #trade .slots{grid-template-columns:repeat(4,1fr)}
-#trade label{display:flex;align-items:center;gap:6px;font-size:19px;cursor:pointer}
-#trade input[type=checkbox]{width:20px;height:20px;accent-color:#6cc23a}
+#trade .slot.empty::after{content:'+';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--dim);pointer-events:none}
+#trade .slot.theirs.empty::after{content:'·'}
+#trade .steps{display:flex;flex-direction:column;gap:2px;font-size:18px;color:var(--dim);border:2px dashed var(--line);padding:6px 8px}
+#trade .steps b{color:var(--ink);font-weight:normal}
+#trok{font-family:var(--f-display);font-size:9px;padding:10px;background:#1f5a2e;border:3px solid #8fe36a;color:#fff;cursor:pointer}
+#trok.on{background:#8fe36a;color:#0d0b12}
+#trwait{position:absolute;left:50%;top:14%;transform:translateX(-50%);z-index:12;background:var(--panel);border:3px solid var(--gold);padding:10px 14px;display:flex;gap:10px;align-items:center;font-size:20px}
 #trade .ok{color:#8fe36a}
 #trade .row{justify-content:space-between}
 #trade .st{font-size:18px;color:var(--dim);text-align:center}
@@ -143,7 +150,7 @@ input.nick:focus{border-color:var(--gold);outline:none}
     <div class="bar" id="hpb"><i></i><em></em></div>
     <div class="bar" id="mpb"><i></i><em></em></div>
     <div id="stats"></div>
-    <div class="lbl">EQUIPAMENTO (ARMA · HABILIDADE · ARMADURA · ANEL)</div>
+    <div class="lbl">EQUIPAMENTO</div>
     <div class="slots" id="equip"></div>
     <div class="lbl">MOCHILA</div>
     <div class="slots" id="inv"></div>
@@ -154,14 +161,16 @@ input.nick:focus{border-color:var(--gold);outline:none}
     <div id="party"></div>
   </aside>
   <div id="tip" hidden></div>
+  <div id="trwait" hidden><span id="trwaittxt"></span><button class="btn alt sm" id="trwaitno" type="button">CANCELAR</button></div>
   <div id="treq" hidden><span id="treqtxt"></span><button class="btn sm" id="treqok" type="button">ACEITAR</button><button class="btn alt sm" id="treqno" type="button">RECUSAR</button></div>
   <div id="trade" hidden>
     <h2 id="trtitle">Troca</h2>
+    <div class="steps"><div><b>1.</b> Clique num item da mochila (ou arraste até um slot <b>+</b>) para oferecer. Clique no item oferecido para tirar.</div><div><b>2.</b> Veja o que o outro oferece do lado direito.</div><div><b>3.</b> Os dois clicam em CONFIRMAR. Se alguém mudar a oferta, as confirmações voltam ao zero.</div></div>
     <div class="cols">
-      <div class="col"><div class="lbl">VOCÊ OFERECE (clique na mochila para adicionar)</div><div class="slots" id="troff"></div><label><input type="checkbox" id="trok"> Confirmo a troca</label></div>
+      <div class="col"><div class="lbl">VOCÊ OFERECE</div><div class="slots" id="troff"></div><button id="trok" type="button">CONFIRMAR TROCA</button></div>
       <div class="col"><div class="lbl" id="trlbl">ELE OFERECE</div><div class="slots" id="trthey"></div><div id="trtheyok" class="st">Aguardando confirmação dele…</div></div>
     </div>
-    <div class="st" id="trst">Os dois precisam confirmar. Mudou a oferta? As confirmações zeram.</div>
+    <div class="st" id="trst">Aguardando os dois confirmarem.</div>
     <div class="row"><button class="btn alt sm" id="trcancel" type="button">CANCELAR</button></div>
   </div>
   <div id="drag" hidden><canvas width="64" height="64"></canvas></div>
@@ -842,17 +851,17 @@ function cleanItem(it){if(!it||typeof it!=='object')return null;const o={k:Strin
 function hstr(x){let h=7;const t=JSON.stringify(x);for(let i=0;i<t.length;i++)h=(Math.imul(h,31)+t.charCodeAt(i))|0;return h;}
 let trade=null, trSeq=0, lastDone=null, pendingReq=null;
 function tradeHash(a,b){const A=myPeer<a.peer?[trade.off,b]:[b,trade.off];return hstr(A);}
-function startTrade(peer){const r=remotes.get(peer);if(!r||!r.in||r.d||!me||me.dead||trade)return;trade={peer,name:r.n,st:'req',s:++trSeq,off:[],ok:0,pub(){return{s:this.s,to:this.peer,st:this.st,off:this.st==='done'?this.doneOff:this.off,ok:this.ok};}};log(`Pedido de troca enviado para ${r.n}.`,true);}
+function startTrade(peer){const r=remotes.get(peer);if(!r||!r.in||r.d||!me||me.dead||trade)return;trade={peer,name:r.n,st:'req',s:++trSeq,off:[],ok:0,pub(){return{s:this.s,to:this.peer,st:this.st,off:this.st==='done'?this.doneOff:this.off,ok:this.ok};}};log(`Pedido de troca enviado para ${r.n}.`,true);$('trwaittxt').textContent=`Aguardando ${r.n} aceitar a troca…`;$('trwait').hidden=false;}
 function acceptReq(){if(!pendingReq||trade)return;const r=remotes.get(pendingReq);$('treq').hidden=true;if(!r){pendingReq=null;return;}trade={peer:pendingReq,name:r.n,st:'open',s:++trSeq,off:[],ok:0,pub(){return{s:this.s,to:this.peer,st:this.st,off:this.st==='done'?this.doneOff:this.off,ok:this.ok};}};pendingReq=null;openTradeUI();}
 function declineReq(){$('treq').hidden=true;pendingReq=null;}
 function cancelTrade(msg){if(!trade)return;for(const it of trade.off){const j=me.inv.indexOf(null);if(j>=0)me.inv[j]=it;else bags.push({x:me.x,y:me.y,items:[it],ttl:75,q:bagQ([it])});}
- trade=null;$('trade').hidden=true;dirtyInv=true;saveChar();if(msg)log(msg,true);}
-function openTradeUI(){$('trtitle').textContent='Troca com '+trade.name;$('trlbl').textContent=trade.name.toUpperCase()+' OFERECE';$('trok').checked=false;$('trade').hidden=false;renderTrade([]);}
-function offerItem(i){if(!trade||trade.st!=='open')return;const it=me.inv[i];if(!it||trade.off.length>=8)return;me.inv[i]=null;trade.off.push(it);trade.ok=0;$('trok').checked=false;dirtyInv=true;}
-function unofferItem(i){if(!trade)return;const it=trade.off[i];if(!it)return;const j=me.inv.indexOf(null);if(j<0){addText(me.x,me.y-1,'Mochila cheia','#ff9a9a');return;}trade.off.splice(i,1);me.inv[j]=it;trade.ok=0;$('trok').checked=false;dirtyInv=true;}
-function renderTrade(their){for(let i=0;i<8;i++){drawIcon($('to'+i).querySelector('canvas').getContext('2d'),trade.off[i]||null);drawIcon($('tt'+i).querySelector('canvas').getContext('2d'),their[i]||null);}}
+ trade=null;$('trade').hidden=true;$('trwait').hidden=true;dirtyInv=true;saveChar();if(msg)log(msg,true);}
+function openTradeUI(){$('trtitle').textContent='Troca com '+trade.name;$('trlbl').textContent=trade.name.toUpperCase()+' OFERECE';setOkUI(0);$('trade').hidden=false;$('trwait').hidden=true;renderTrade([]);}
+function offerItem(i){if(!trade||trade.st!=='open')return;const it=me.inv[i];if(!it||trade.off.length>=8)return;me.inv[i]=null;trade.off.push(it);trade.ok=0;setOkUI(0);dirtyInv=true;}
+function unofferItem(i){if(!trade)return;const it=trade.off[i];if(!it)return;const j=me.inv.indexOf(null);if(j<0){addText(me.x,me.y-1,'Mochila cheia','#ff9a9a');return;}trade.off.splice(i,1);me.inv[j]=it;trade.ok=0;setOkUI(0);dirtyInv=true;}
+function renderTrade(their){for(let i=0;i<8;i++){const a=$('to'+i),b=$('tt'+i);drawIcon(a.querySelector('canvas').getContext('2d'),trade.off[i]||null);drawIcon(b.querySelector('canvas').getContext('2d'),their[i]||null);a.classList.toggle('empty',!trade.off[i]);b.classList.toggle('empty',!their[i]);}}
 function tradeTick(){
- if(pendingReq&&!remotes.has(pendingReq))declineReq();
+ if(pendingReq){const pr=remotes.get(pendingReq);if(!pr||!pr.tr||pr.tr.to!==myPeer||pr.tr.st!=='req')declineReq();}
  if(!trade)return;const r=remotes.get(trade.peer);
  if(!r||!r.in||r.d){cancelTrade(`Troca com ${trade.name} cancelada.`);return;}
  const t=r.tr;const forMe=t&&t.to===myPeer;
@@ -861,18 +870,20 @@ function tradeTick(){
   if(forMe&&(t.st==='open'||t.st==='done'))trade.openedAt=trade.openedAt||performance.now();
   const their=Array.isArray(t&&t.off)?t.off.slice(0,8).map(cleanItem).filter(Boolean):[];
   const h=hstr(myPeer<trade.peer?[trade.off,their]:[their,trade.off]);
-  if(trade.ok&&trade.ok!==h){trade.ok=0;$('trok').checked=false;}
+  if(trade.ok&&trade.ok!==h){trade.ok=0;setOkUI(0);}
   if(trade.lastTheirH!==h){trade.lastTheirH=h;renderTrade(their);}
   const theyOk=t&&t.ok===h&&h!==0;$('trtheyok').textContent=theyOk?'✔ '+trade.name+' confirmou':'Aguardando confirmação de '+trade.name+'…';$('trtheyok').className=theyOk?'st ok':'st';
-  const free=me.inv.filter(x=>!x).length;$('trst').textContent=their.length>free?`Você precisa de ${their.length-free} espaço(s) livre(s) na mochila para receber.`:'Os dois precisam confirmar. Mudou a oferta? As confirmações zeram.';
+  const free=me.inv.filter(x=>!x).length;$('trst').textContent=their.length>free?`Você precisa de ${their.length-free} espaço(s) livre(s) na mochila para receber.`:(trade.ok&&theyOk?'Trocando…':trade.ok?'Você confirmou. Aguardando '+trade.name+'.':theyOk?trade.name+' confirmou. Falta você.':'Aguardando os dois confirmarem.');
   if(theyOk&&trade.ok===h&&their.length<=free&&lastDone!==h){lastDone=h;for(const it of their){const j=me.inv.indexOf(null);if(j>=0)me.inv[j]=it;}
    const got=their.map(itemName).join(', ')||'nada';const gave=trade.off.map(itemName).join(', ')||'nada';trade.doneOff=trade.off;trade.off=[];trade.st='done';trade.doneT=performance.now();$('trade').hidden=true;dirtyInv=true;saveChar();log(`Troca concluída com ${trade.name}: você deu ${gave} e recebeu ${got}.`,true);}
   return;}
  if(trade.st==='done'&&performance.now()-trade.doneT>6000)trade=null;}
-$('trok').addEventListener('change',()=>{if(!trade||trade.st!=='open')return;const r=remotes.get(trade.peer);const their=r&&r.tr&&Array.isArray(r.tr.off)?r.tr.off.slice(0,8).map(cleanItem).filter(Boolean):[];trade.ok=$('trok').checked?hstr(myPeer<trade.peer?[trade.off,their]:[their,trade.off]):0;});
+function setOkUI(on){const b=$('trok');b.classList.toggle('on',!!on);b.textContent=on?'✔ CONFIRMADO (clique para desfazer)':'CONFIRMAR TROCA';}
+$('trok').addEventListener('click',()=>{if(!trade||trade.st!=='open')return;const r=remotes.get(trade.peer);const their=r&&r.tr&&Array.isArray(r.tr.off)?r.tr.off.slice(0,8).map(cleanItem).filter(Boolean):[];const free=me.inv.filter(x=>!x).length;if(their.length>free){$('trst').textContent=`Libere ${their.length-free} espaço(s) na mochila antes de confirmar.`;return;}trade.ok=trade.ok?0:hstr(myPeer<trade.peer?[trade.off,their]:[their,trade.off]);setOkUI(trade.ok);});
 $('trcancel').addEventListener('click',()=>{if(!trade)return;const n=trade.name;trade.st='cancel';const pub=trade.pub();cancelTrade(`Troca com ${n} cancelada.`);trade={peer:pub.to,st:'cancel',s:pub.s,off:[],ok:0,doneT:performance.now(),pub(){return{s:this.s,to:this.peer,st:'cancel'};}};setTimeout(()=>{if(trade&&trade.st==='cancel')trade=null;},2500);});
+$('trwaitno').addEventListener('click',()=>{if(trade&&trade.st==='req'){trade.st='cancel';const pub=trade.pub();cancelTrade('Pedido de troca cancelado.');trade={peer:pub.to,st:'cancel',s:pub.s,off:[],ok:0,pub(){return{s:this.s,to:this.peer,st:'cancel'};}};setTimeout(()=>{if(trade&&trade.st==='cancel')trade=null;},2500);}});
 $('treqok').addEventListener('click',acceptReq);$('treqno').addEventListener('click',declineReq);
-for(let i=0;i<8;i++){const a=mkSlot('to'+i);a.addEventListener('click',()=>unofferItem(i));$('troff').appendChild(a);const b=mkSlot('tt'+i);$('trthey').appendChild(b);}
+for(let i=0;i<8;i++){const a=mkSlot('to'+i);a.addEventListener('click',()=>unofferItem(i));$('troff').appendChild(a);const b=mkSlot('tt'+i);b.classList.add('theirs');$('trthey').appendChild(b);}
 /* ---------- arrastar e soltar ---------- */
 const dragEl=$('drag');let drag=null,suppressClick=false;
 function slotRef(id){return{kind:id.slice(0,2),i:+id.slice(2)};}
@@ -887,7 +898,7 @@ function moveItem(from,to){const a=getIt(from),b=getIt(to);if(!a)return;
  me.hp=Math.min(me.hp,stat('mhp'));me.mp=Math.min(me.mp,stat('mmp'));dirtyInv=true;saveChar();}
 function dropFloor(from){const it=getIt(from);if(!it)return;setIt(from,null);const nb=curBag&&curBag.items.length<8?curBag:null;if(nb)nb.items.push(it);else bags.push({x:me.x+rnd(-.4,.4),y:me.y+rnd(-.4,.4),items:[it],ttl:75,q:bagQ([it])});addText(me.x,me.y-1,'Item no chão','#bbb');dirtyInv=true;saveChar();}
 document.querySelectorAll('.slot').forEach(sl=>{
- sl.addEventListener('pointerdown',e=>{if(!me||me.dead||e.button!==0)return;const r=slotRef(sl.id);const it=getIt(r);if(!it)return;drag={from:r,it,sx:e.clientX,sy:e.clientY,moved:false};e.preventDefault();});
+ sl.addEventListener('pointerdown',e=>{if(!me||me.dead||e.button!==0)return;const r=slotRef(sl.id);if(r.kind==='to'||r.kind==='tt')return;const it=getIt(r);if(!it)return;drag={from:r,it,sx:e.clientX,sy:e.clientY,moved:false};e.preventDefault();});
 });
 window.addEventListener('pointermove',e=>{if(!drag)return;if(!drag.moved&&Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)<6)return;
  if(!drag.moved){drag.moved=true;drawIcon(dragEl.querySelector('canvas').getContext('2d'),drag.it);dragEl.hidden=false;tip.hidden=true;}
@@ -897,6 +908,7 @@ window.addEventListener('pointermove',e=>{if(!drag)return;if(!drag.moved&&Math.h
 window.addEventListener('pointerup',e=>{if(!drag)return;const d=drag;drag=null;dragEl.hidden=true;document.querySelectorAll('.slot.over').forEach(x=>x.classList.remove('over'));cv.classList.remove('over');
  if(!d.moved)return;suppressClick=true;setTimeout(()=>suppressClick=false,0);
  const t=document.elementFromPoint(e.clientX,e.clientY);const sl=t&&t.closest('.slot');
+ if(sl&&sl.id.startsWith('to')&&d.from.kind==='iv'){offerItem(d.from.i);return;}
  if(sl){const to=slotRef(sl.id);if(to.kind===d.from.kind&&to.i===d.from.i)return;if(to.kind==='lt'&&!curBag){dropFloor(d.from);return;}moveItem(d.from,to);}
  else if(t===cv)dropFloor(d.from);});
 window.addEventListener('click',e=>{if(suppressClick&&e.target.closest('.slot')){e.stopPropagation();e.preventDefault();}},true);
@@ -918,19 +930,19 @@ function updateUI(){
  const party=$('party');const keys=[...remotes.keys()].join('|');
  if(keys!==partyKeys){partyKeys=keys;party.innerHTML='';partyEls.clear();
   if(!remotes.size){const d=document.createElement('div');d.style.color='var(--dim)';d.textContent=room?'Ninguém mais conectado. Mande o link para seu amigo.':'Sem conexão com o servidor.';party.appendChild(d);}
-  for(const[k,r]of remotes){const d=document.createElement('div');d.className='pm';const n=document.createElement('span');n.className='nm';n.title='Clique para propor uma troca';d.appendChild(n);
-   n.addEventListener('click',()=>startTrade(k));
+  for(const[k,r]of remotes){const d=document.createElement('div');d.className='pm';const n=document.createElement('span');n.className='nm';n.title='Passe o mouse para ver o equipamento';d.appendChild(n);
    n.addEventListener('mouseenter',()=>{const r=remotes.get(k);if(!r||!r.in)return;tip.innerHTML='';const b=document.createElement('b');b.textContent=`${r.n} · ${CL[r.c].nome} nível ${r.lv}`;tip.appendChild(b);const row=document.createElement('div');row.className='eqrow';
     const eq=r.eq||[];['Arma','Habilidade','Armadura','Anel'].forEach((lab,i)=>{const c=document.createElement('canvas');c.width=c.height=48;drawIcon(c.getContext('2d'),eq[i]||null);c.title=lab;row.appendChild(c);});tip.appendChild(row);
     eq.forEach(it=>{if(!it)return;const l=document.createElement('div');l.textContent=itemName(it)+(it.t!=null?` (T${it.t})`:'');l.style.color=it.p&&AFX[it.p]?AFX[it.p].col:'';tip.appendChild(l);});
     if(!eq.some(Boolean)){const l=document.createElement('div');l.textContent='Sem equipamento';tip.appendChild(l);}
-    const l2=document.createElement('div');l2.style.color='var(--dim)';l2.textContent='Clique no nome para propor uma troca';tip.appendChild(l2);
+    
     tip.hidden=false;const rc=n.getBoundingClientRect();tip.style.left=Math.max(8,rc.left-250)+'px';tip.style.top=Math.max(8,Math.min(window.innerHeight-180,rc.top-40))+'px';});
    n.addEventListener('mouseleave',()=>tip.hidden=true);
    const bt=document.createElement('button');bt.type='button';bt.className='tp';bt.addEventListener('click',()=>teleportTo(k));d.appendChild(bt);
-   const hb=document.createElement('div');hb.className='mini-hp';const hi=document.createElement('i');hb.appendChild(hi);d.appendChild(hb);party.appendChild(d);partyEls.set(k,{n,bt,hi});}}
+   const btr=document.createElement('button');btr.type='button';btr.className='tp tr';btr.textContent='Trocar';btr.title='Propor troca de itens';btr.addEventListener('click',()=>startTrade(k));d.appendChild(btr);
+   const hb=document.createElement('div');hb.className='mini-hp';const hi=document.createElement('i');hb.appendChild(hi);d.appendChild(hb);party.appendChild(d);partyEls.set(k,{n,bt,btr,hi});}}
  for(const[k,r]of remotes){const el=partyEls.get(k);if(!el)continue;const txt=r.in?(r.d?`${r.n} · morto`:`${r.n} · ${CL[r.c].nome} ${r.lv}`):`${r.n} · no menu`;if(el.n.textContent!==txt)el.n.textContent=txt;
-  const bt=tpCd>0?`${Math.ceil(tpCd)}s`:'Teleportar';if(el.bt.textContent!==bt)el.bt.textContent=bt;el.bt.disabled=!(r.in&&!r.d&&tpCd<=0&&!me.dead);el.hi.style.width=(r.in?clamp(r.hp/r.mhp,0,1)*100:0)+'%';}
+  const bt=tpCd>0?`${Math.ceil(tpCd)}s`:'Teleportar';if(el.bt.textContent!==bt)el.bt.textContent=bt;el.bt.disabled=!(r.in&&!r.d&&tpCd<=0&&!me.dead);el.btr.disabled=!(r.in&&!r.d&&!me.dead&&!trade);el.hi.style.width=(r.in?clamp(r.hp/r.mhp,0,1)*100:0)+'%';}
 }
 
 /* ---------- telas ---------- */
