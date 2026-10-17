@@ -77,7 +77,7 @@ h1{font-family:var(--f-display);font-size:clamp(18px,4.2vw,34px);line-height:1.4
 @media (max-width:620px){.classes{grid-template-columns:repeat(2,1fr)}}
 .cls{background:var(--panel);border:3px solid var(--line);color:var(--ink);font-family:var(--f-ui);font-size:19px;padding:10px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px}
 .cls canvas{width:64px;height:64px;image-rendering:pixelated}
-.cls b{font-family:var(--f-display);font-size:10px;color:var(--gold);font-weight:normal}
+.cls b{font-family:var(--f-display);font-size:9px;color:var(--gold);font-weight:normal;text-align:center;line-height:1.5;text-wrap:balance}
 .cls span{color:var(--dim);font-size:17px;line-height:1.05}
 .cls[aria-pressed="true"]{border-color:var(--gold);background:#2a2036}
 .cls:focus-visible{outline:2px solid var(--gold)}
@@ -344,16 +344,16 @@ SPR.boss=mkSprite(SPR_DEF.boss,12);SPR.oryx=mkSprite(SPR_DEF.oryx,13);SPR.captai
 
 /* ---------- classes, inimigos, itens ---------- */
 const CL=[
- {nome:'Mago',spr:'mago',desc:'Cajado de longo alcance, dois projéteis. Habilidade: explosão arcana no cursor.',
+ {nome:'Mago Ferri',spr:'mago',desc:'Cajado de longo alcance, dois projéteis. Habilidade: explosão arcana no cursor.',
   base:{mhp:100,mmp:100,att:12,def:0,spd:10,dex:15,vit:8,wis:12},gain:{mhp:[20,30],mmp:[5,15],att:[1,2],def:[0,0],spd:[1,1],dex:[1,2],vit:[0,1],wis:[1,2]},
   wep:{min:20,max:42,range:9,speed:15,shots:2,sp:.28,pierce:false,col:'#9ad0ff',size:5},abil:{nome:'Feitiço Arcano',mp:45}},
- {nome:'Guerreiro',spr:'guerreiro',desc:'Espada curta e muito dano, muita vida. Habilidade: fúria (mais velocidade e cadência).',
+ {nome:'Guerreiro Lima',spr:'guerreiro',desc:'Espada curta e muito dano, muita vida. Habilidade: fúria (mais velocidade e cadência).',
   base:{mhp:200,mmp:100,att:15,def:4,spd:9,dex:10,vit:12,wis:6},gain:{mhp:[25,35],mmp:[2,8],att:[1,2],def:[0,1],spd:[1,1],dex:[1,1],vit:[1,2],wis:[0,1]},
   wep:{min:48,max:84,range:3.8,speed:11,shots:1,sp:0,pierce:false,col:'#f1f1f1',size:8},abil:{nome:'Elmo da Fúria',mp:35}},
- {nome:'Arqueiro',spr:'arqueiro',desc:'Flechas que atravessam inimigos. Habilidade: flecha gigante perfurante.',
+ {nome:'Pedrin Arco Frecha',spr:'arqueiro',desc:'Flechas que atravessam inimigos. Habilidade: flecha gigante perfurante.',
   base:{mhp:150,mmp:100,att:12,def:2,spd:11,dex:11,vit:9,wis:8},gain:{mhp:[22,30],mmp:[4,10],att:[1,2],def:[0,1],spd:[1,1],dex:[1,2],vit:[0,1],wis:[0,1]},
   wep:{min:30,max:56,range:7.5,speed:13,shots:1,sp:0,pierce:true,col:'#d9b06a',size:6},abil:{nome:'Aljava do Caçador',mp:40}},
- {nome:'Sacerdote',spr:'sacerdote',desc:'Varinha rápida e precisa. Habilidade: cura você e o grupo por perto.',
+ {nome:'Zé Mago',spr:'sacerdote',desc:'Varinha rápida e precisa. Habilidade: cura você e o grupo por perto.',
   base:{mhp:100,mmp:120,att:11,def:0,spd:12,dex:13,vit:10,wis:15},gain:{mhp:[20,28],mmp:[6,15],att:[1,2],def:[0,0],spd:[1,2],dex:[1,2],vit:[1,1],wis:[1,2]},
   wep:{min:24,max:40,range:8.5,speed:17,shots:1,sp:0,pierce:false,col:'#ffe08a',size:5},abil:{nome:'Tomo da Cura',mp:50}}
 ];
