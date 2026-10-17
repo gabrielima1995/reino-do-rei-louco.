@@ -137,7 +137,7 @@ input.nick:focus{border-color:var(--gold);outline:none}
   <div class="overlay" id="start">
     <div class="card">
       <h1>Reino do Rei Louco</h1>
-      <p class="sub">Desembarque na praia, mate monstros, suba de nível e avance até o coração da ilha, onde o Rei Louco espera. Portais para dungeons caem dos monstros mais fortes.</p>
+      <p class="sub">Desembarque na praia, mate monstros, suba de nível sem limite e avance até o coração da ilha, onde o Rei Louco espera. Portais para dungeons caem dos monstros mais fortes.</p>
       <div class="row"><label for="nick" class="sub">Seu nome:</label><input id="nick" class="nick" maxlength="14" autocomplete="off"></div>
       <div class="classes" id="classes"></div>
       <div class="row">
@@ -347,11 +347,11 @@ let nickname=store.get('reino-louco-nick')||('Herói'+rint(10,99));
 const PROG='reino-louco-prog-v1';
 function loadProg(){try{return JSON.parse(store.get(PROG)||'{}')||{}}catch(_){return{}}}
 function saveProg(){if(!me)return;const pr=loadProg();pr[me.cls]={lv:me.lv,xp:me.xp,st:{...me.st}};store.set(PROG,JSON.stringify(pr));}
-function newChar(cls){const b=CL[cls].base;const pr=loadProg()[cls];const ch={name:nickname,cls,lv:1,xp:0,st:{...b},hp:b.mhp,mp:b.mmp,eq:[{k:'w',t:0,c:cls},null,{k:'a',t:0},null],inv:[{k:'hp'},{k:'hp'},{k:'mp'},null,null,null,null,null],x:SPAWN.x,y:SPAWN.y,dead:false,kills:0};if(pr&&pr.lv>1&&pr.st){ch.lv=Math.min(20,pr.lv|0);ch.xp=pr.xp|0;for(const k in b)if(typeof pr.st[k]==='number')ch.st[k]=clamp(pr.st[k],b[k],CAP[k]);ch.hp=ch.st.mhp;ch.mp=ch.st.mmp;}return ch;}
+function newChar(cls){const b=CL[cls].base;const pr=loadProg()[cls];const ch={name:nickname,cls,lv:1,xp:0,st:{...b},hp:b.mhp,mp:b.mmp,eq:[{k:'w',t:0,c:cls},null,{k:'a',t:0},null],inv:[{k:'hp'},{k:'hp'},{k:'mp'},null,null,null,null,null],x:SPAWN.x,y:SPAWN.y,dead:false,kills:0};if(pr&&pr.lv>1&&pr.st){ch.lv=Math.max(1,pr.lv|0);ch.xp=pr.xp|0;for(const k in b)if(typeof pr.st[k]==='number')ch.st[k]=clamp(pr.st[k],b[k],(k==='mhp'||k==='mmp')?1e7:CAP[k]);ch.hp=ch.st.mhp;ch.mp=ch.st.mmp;}return ch;}
 function stat(k){let v=me.st[k];const a=me.eq[2],r=me.eq[3];
  if(a){if(k==='def')v+=2+3*a.t;if(k==='mhp')v+=10*a.t;if(a.t>=7&&k==='att')v+=5;}
  if(r&&r.r===k)v+=(k==='mhp'||k==='mmp')?20+20*r.t:2+2*r.t;return v;}
-const need=lv=>30*lv*lv+60;
+const need=lv=>Math.round((30*lv*lv+60)*Math.pow(1.07,Math.max(0,lv-20)));
 function saveChar(){if(me&&!me.dead)store.set(SAVE,JSON.stringify(me));}
 
 /* ---------- mundo ---------- */
@@ -490,8 +490,8 @@ function rollLoot(t){const T=ET[t],tier=T.tier,it=[],c=me.cls;
  if(tier>=2&&R()<.025+.05*(tier-2))it.push({k:'sp',s:SP_T[rint(0,7)]});
  if(tier>=4&&R()<.012)it.push({k:'w',t:7,c});
  return it;}
-function gainXp(n){if(me.lv>=20)return;me.xp+=n;while(me.lv<20&&me.xp>=need(me.lv)){me.xp-=need(me.lv);levelUp();}if(me.lv>=20)me.xp=0;}
-function levelUp(){me.lv++;const g=CL[me.cls].gain;for(const k in g){me.st[k]=Math.min(CAP[k],me.st[k]+rint(g[k][0],g[k][1]));}me.hp=stat('mhp');me.mp=stat('mmp');addText(me.x,me.y-1.2,`NÍVEL ${me.lv}!`,'#f2c14e',true);log(`${me.name} chegou ao nível ${me.lv}.`,true);dirtyInv=true;saveChar();saveProg();}
+function gainXp(n){me.xp+=n;while(me.xp>=need(me.lv)){me.xp-=need(me.lv);levelUp();}}
+function levelUp(){me.lv++;const g=CL[me.cls].gain;for(const k in g){const big=k==='mhp'||k==='mmp';me.st[k]=big?me.st[k]+rint(g[k][0],g[k][1]):Math.min(CAP[k],me.st[k]+rint(g[k][0],g[k][1]));}me.hp=stat('mhp');me.mp=stat('mmp');addText(me.x,me.y-1.2,`NÍVEL ${me.lv}!`,'#f2c14e',true);log(`${me.name} chegou ao nível ${me.lv}.`,true);dirtyInv=true;saveChar();saveProg();}
 
 /* ---------- entrada ---------- */
 const keys={};let mouse={x:0,y:0,down:false};const touch={move:null,aim:null};let isTouch=false;
@@ -760,7 +760,7 @@ function drawAbilIcon(g){const S=g.canvas.width,p=S/16;g.clearRect(0,0,S,S);cons
 function updateUI(){
  $('pname').textContent=me.name;$('pcls').textContent=`${CL[me.cls].nome} · Nv ${me.lv}`;
  const bar=(id,v,m,txt)=>{const el=$(id);el.querySelector('i').style.width=clamp(v/m*100,0,100)+'%';el.querySelector('em').textContent=txt;};
- bar('xpb',me.lv>=20?1:me.xp,me.lv>=20?1:need(me.lv),me.lv>=20?'NÍVEL MÁXIMO':`XP ${me.xp}/${need(me.lv)}`);
+ bar('xpb',me.xp,need(me.lv),`XP ${me.xp}/${need(me.lv)}`);
  bar('hpb',me.hp,stat('mhp'),`${Math.max(0,Math.round(me.hp))}/${stat('mhp')}`);bar('mpb',me.mp,stat('mmp'),`${Math.round(me.mp)}/${stat('mmp')}`);
  const st=$('stats');let h='';for(const k of['att','def','spd','dex','vit','wis']){const v=stat(k),b=v-me.st[k];h+=`<div><span>${STAT_LBL[k]}</span><b>${v}${b>0?` <span style="color:#6cc23a">+${b}</span>`:''}${me.st[k]>=CAP[k]?' ★':''}</b></div>`;}st.innerHTML=h;
  $('wrath').innerHTML=`Ira do Rei Louco: <b>${Math.min(realmKills,BOSS_KILLS)}/${BOSS_KILLS}</b>`;
